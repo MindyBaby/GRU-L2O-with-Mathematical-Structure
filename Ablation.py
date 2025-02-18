@@ -1,58 +1,23 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import torch
 import numpy as np
 import torch.nn as nn
 from timeit import default_timer as timer
-
 import warnings
 warnings.filterwarnings("ignore")
-
-
-# In[2]:
-
-
 if torch.cuda.is_available():
     USE_CUDA = True  
-
 print('USE_CUDA = {}'.format(USE_CUDA))
-
-
-# ## 1.创建二次函数模拟数据
-
-# In[3]:
-
 
 num_samples = 150
 num_features = 50
 batchsize = 128
-
 torch.manual_seed(42)
 W = torch.randn(batchsize, num_samples, num_features) 
 x_gt = torch.randn(batchsize, num_features)
 y_gt = torch.matmul(W, x_gt.unsqueeze(-1)).squeeze()
-
-
-# In[4]:
-
-
-# 设定噪声的标准差
 noise_std = 0.2
-# 生成噪声
 noise = torch.randn_like(y_gt) * noise_std
-# 添加噪声到 Y 中
 Y = y_gt + noise
-#Y = y_gt
-
-
-# ## 2.定义Lasso优化问题（混合凸函数情况）
-
-# In[6]:
-
 
 def f(W, Y, x):
     """minimize (1/2) * ||Y - W @ X||_2^2  + rho * ||X||_1"""
@@ -61,32 +26,19 @@ def f(W, Y, x):
         W = W.cuda()
         Y = Y.cuda()
         x = x.cuda()    
-        
-    # 数据拟合项（残差平方和）
     data_fit_term = 0.5 * ((torch.matmul(W, x.unsqueeze(-1)).squeeze() - Y)**2).sum()    
-    # 正则化项（L1范数）
     regularization_term = rho * torch.norm(x, p=1)    
-    # 总损失
     loss = data_fit_term + regularization_term
     return loss
 
 
-# ## 3.构造GRU_Math_P优化器
-
-# In[7]:
-
-
+# ## 1.GRU_Math_P
 NORM_FUNC = {
     'exp': torch.exp,
     'eye': nn.Identity(),
     'sigmoid': lambda x: 2.0 * torch.sigmoid(x),
     'softplus': nn.Softplus(),
 }
-
-
-# In[8]:
-
-
 class GRU_Math_Optimizee_Model_P(nn.Module):
     def __init__(self, input_size, output_size, hidden_size, num_stacks,
                  batchsize, preprocess = True ,p = 10 ,output_scale = 1,
@@ -238,46 +190,25 @@ class GRU_Math_Optimizee_Model_P(nn.Module):
         #x = torch.add(x, update)
         x = update
         return x , next_state
-
-
-# In[9]:
-
-
 Layers = 2
 Hidden_nums = 20
 Input_DIM = num_features
 Output_DIM = num_features
 output_scale_value=1
-
-
-# In[10]:
-
-
 GRU_Math_Optimizee_P = GRU_Math_Optimizee_Model_P(Input_DIM, Output_DIM, Hidden_nums ,Layers , batchsize=batchsize,
                 preprocess=False,output_scale=output_scale_value)   ###### preprocess=False
-
 print(GRU_Math_Optimizee_P)
-
 if USE_CUDA:
     GRU_Math_Optimizee_P = GRU_Math_Optimizee_P.cuda()
 
 
-# ## 4.构造GRU_Math_PA优化器
-
-# In[11]:
-
-
+# ## 2.GRU_Math_PA
 NORM_FUNC = {
     'exp': torch.exp,
     'eye': nn.Identity(),
     'sigmoid': lambda x: 2.0 * torch.sigmoid(x),
     'softplus': nn.Softplus(),
 }
-
-
-# In[12]:
-
-
 class GRU_Math_Optimizee_Model_PA(nn.Module):
     def __init__(self, input_size, output_size, hidden_size, num_stacks,
                  batchsize, preprocess = True ,p = 10 ,output_scale = 1,
@@ -430,46 +361,25 @@ class GRU_Math_Optimizee_Model_PA(nn.Module):
         #x = torch.add(x, update)
         x = update
         return x , next_state
-
-
-# In[13]:
-
-
 Layers = 2
 Hidden_nums = 20
 Input_DIM = num_features
 Output_DIM = num_features
 output_scale_value=1
-
-
-# In[14]:
-
-
 GRU_Math_Optimizee_PA = GRU_Math_Optimizee_Model_PA(Input_DIM, Output_DIM, Hidden_nums ,Layers , batchsize=batchsize,
                 preprocess=False,output_scale=output_scale_value)   ###### preprocess=False
-
 print(GRU_Math_Optimizee_PA)
-
 if USE_CUDA:
     GRU_Math_Optimizee_PA = GRU_Math_Optimizee_PA.cuda()
 
 
-# ## 5.构造GRU_Math_PBA优化器
-
-# In[15]:
-
-
+# ## 3.GRU_Math_PBA
 NORM_FUNC = {
     'exp': torch.exp,
     'eye': nn.Identity(),
     'sigmoid': lambda x: 2.0 * torch.sigmoid(x),
     'softplus': nn.Softplus(),
 }
-
-
-# In[16]:
-
-
 class GRU_Math_Optimizee_Model_PBA(nn.Module):
     def __init__(self, input_size, output_size, hidden_size, num_stacks,
                  batchsize, preprocess = True ,p = 10 ,output_scale = 1,
@@ -621,46 +531,25 @@ class GRU_Math_Optimizee_Model_PBA(nn.Module):
         #x = torch.add(x, update)
         x = update
         return x , next_state
-
-
-# In[17]:
-
-
 Layers = 2
 Hidden_nums = 20
 Input_DIM = num_features
 Output_DIM = num_features
 output_scale_value=1
-
-
-# In[18]:
-
-
 GRU_Math_Optimizee_PBA = GRU_Math_Optimizee_Model_PBA(Input_DIM, Output_DIM, Hidden_nums ,Layers , batchsize=batchsize,
                 preprocess=False,output_scale=output_scale_value)   ###### preprocess=False
-
 print(GRU_Math_Optimizee_PBA)
-
 if USE_CUDA:
     GRU_Math_Optimizee_PBA = GRU_Math_Optimizee_PBA.cuda()
 
 
-# ## 5.构造GRU_Math_PBA1优化器
-
-# In[19]:
-
-
+# ## 4.GRU_Math_PBA1
 NORM_FUNC = {
     'exp': torch.exp,
     'eye': nn.Identity(),
     'sigmoid': lambda x: 2.0 * torch.sigmoid(x),
     'softplus': nn.Softplus(),
 }
-
-
-# In[20]:
-
-
 class GRU_Math_Optimizee_Model_PBA1(nn.Module):
     def __init__(self, input_size, output_size, hidden_size, num_stacks,
                  batchsize, preprocess = True ,p = 10 ,output_scale = 1,
@@ -812,46 +701,25 @@ class GRU_Math_Optimizee_Model_PBA1(nn.Module):
         #x = torch.add(x, update)
         x = update
         return x , next_state
-
-
-# In[21]:
-
-
 Layers = 2
 Hidden_nums = 20
 Input_DIM = num_features
 Output_DIM = num_features
 output_scale_value=1
-
-
-# In[22]:
-
-
 GRU_Math_Optimizee_PBA1 = GRU_Math_Optimizee_Model_PBA1(Input_DIM, Output_DIM, Hidden_nums ,Layers , batchsize=batchsize,
                 preprocess=False,output_scale=output_scale_value)   ###### preprocess=False
-
 print(GRU_Math_Optimizee_PBA1)
-
 if USE_CUDA:
     GRU_Math_Optimizee_PBA1 = GRU_Math_Optimizee_PBA1.cuda()
 
 
-# ## 6.构造GRU_Math_PBA2优化器
-
-# In[23]:
-
-
+# ## 5.GRU_Math_PBA2
 NORM_FUNC = {
     'exp': torch.exp,
     'eye': nn.Identity(),
     'sigmoid': lambda x: 2.0 * torch.sigmoid(x),
     'softplus': nn.Softplus(),
 }
-
-
-# In[24]:
-
-
 class GRU_Math_Optimizee_Model_PBA2(nn.Module):
     def __init__(self, input_size, output_size, hidden_size, num_stacks,
                  batchsize, preprocess = True ,p = 10 ,output_scale = 1,
@@ -1003,46 +871,25 @@ class GRU_Math_Optimizee_Model_PBA2(nn.Module):
         #x = torch.add(x, update)
         x = update
         return x , next_state
-
-
-# In[25]:
-
-
 Layers = 2
 Hidden_nums = 20
 Input_DIM = num_features
 Output_DIM = num_features
 output_scale_value=1
-
-
-# In[26]:
-
-
 GRU_Math_Optimizee_PBA2 = GRU_Math_Optimizee_Model_PBA2(Input_DIM, Output_DIM, Hidden_nums ,Layers , batchsize=batchsize,
                 preprocess=False,output_scale=output_scale_value)   ###### preprocess=False
-
 print(GRU_Math_Optimizee_PBA2)
-
 if USE_CUDA:
     GRU_Math_Optimizee_PBA2 = GRU_Math_Optimizee_PBA2.cuda()
 
 
-# ## 7.构造GRU_Math_PBA12优化器
-
-# In[27]:
-
-
+# ## 6.GRU_Math_PBA12
 NORM_FUNC = {
     'exp': torch.exp,
     'eye': nn.Identity(),
     'sigmoid': lambda x: 2.0 * torch.sigmoid(x),
     'softplus': nn.Softplus(),
 }
-
-
-# In[28]:
-
-
 class GRU_Math_Optimizee_Model_PB12(nn.Module):
     def __init__(self, input_size, output_size, hidden_size, num_stacks,
                  batchsize, preprocess = True ,p = 10 ,output_scale = 1,
@@ -1194,35 +1041,19 @@ class GRU_Math_Optimizee_Model_PB12(nn.Module):
         #x = torch.add(x, update)
         x = update
         return x , next_state
-
-
-# In[29]:
-
-
 Layers = 2
 Hidden_nums = 20
 Input_DIM = num_features
 Output_DIM = num_features
 output_scale_value=1
-
-
-# In[30]:
-
-
 GRU_Math_Optimizee_PBA12 = GRU_Math_Optimizee_Model_PB12(Input_DIM, Output_DIM, Hidden_nums ,Layers , batchsize=batchsize,
                 preprocess=False,output_scale=output_scale_value)   ###### preprocess=False
-
 print(GRU_Math_Optimizee_PBA12)
-
 if USE_CUDA:
     GRU_Math_Optimizee_PBA12 = GRU_Math_Optimizee_PBA12.cuda()
 
 
-# ## 4.优化问题目标函数的学习过程
-
-# In[31]:
-
-
+# ## 7.优化问题目标函数的学习过程
 class Learner( object ):
     def __init__(self,    
                  f ,   
@@ -1320,103 +1151,7 @@ class Learner( object ):
             self.state = state.detach()
         return self.losses ,self.global_loss_graph 
 
-
-# ## 5.展示
-
-# In[32]:
-
-
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-
-STEPS = 100
-x = np.arange(STEPS)
-
-#for _ in range(1): 
-for loop_count in range(1):  # 在这里设置循环次数
-   
-    GRU_Math_learner_P = Learner(f , W, Y, GRU_Math_Optimizee_P, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner_PA = Learner(f , W, Y, GRU_Math_Optimizee_PA, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner_PBA = Learner(f , W, Y, GRU_Math_Optimizee_PBA, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner_PBA1 = Learner(f , W, Y, GRU_Math_Optimizee_PBA1, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner_PBA2 = Learner(f , W, Y, GRU_Math_Optimizee_PBA2, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner_PBA12 = Learner(f , W, Y, GRU_Math_Optimizee_PBA12, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    
-    gru_math_losses_p, gru_math_sum_loss_p = GRU_Math_learner_P()
-    gru_math_losses_pa, gru_math_sum_loss_pa = GRU_Math_learner_PA()
-    gru_math_losses_pba, gru_math_sum_loss_pba = GRU_Math_learner_PBA()
-    gru_math_losses_pba1, gru_math_sum_loss_pba1 = GRU_Math_learner_PBA1()
-    gru_math_losses_pba2, gru_math_sum_loss_pba2 = GRU_Math_learner_PBA2()
-    gru_math_losses_pba12, gru_math_sum_loss_pba12 = GRU_Math_learner_PBA12()
-    
-    gru_math_losses_tensor_p = torch.tensor(gru_math_losses_p)
-    gru_math_losses_tensor_pa = torch.tensor(gru_math_losses_pa)
-    gru_math_losses_tensor_pba = torch.tensor(gru_math_losses_pba)
-    gru_math_losses_tensor_pba1 = torch.tensor(gru_math_losses_pba1)
-    gru_math_losses_tensor_pba2 = torch.tensor(gru_math_losses_pba2)
-    gru_math_losses_tensor_pba12 = torch.tensor(gru_math_losses_pba12)
-    
-    plt.figure(figsize=(10, 6))
-    plt.plot(x, gru_math_losses_tensor_p.numpy(), label='P', linestyle='-', marker='*', markersize=4, markevery=5)
-    plt.plot(x, gru_math_losses_tensor_pa.numpy(), label='PA', linestyle='-', marker='*', markersize=4, markevery=5)
-    plt.plot(x, gru_math_losses_tensor_pba.numpy(), label='PBA', linestyle='-', marker='*', markersize=4, markevery=5)
-    plt.plot(x, gru_math_losses_tensor_pba1.numpy(), label='PBA1', linestyle='-', marker='*', markersize=4, markevery=5)
-    plt.plot(x, gru_math_losses_tensor_pba2.numpy(), label='PBA2', linestyle='-', marker='*', markersize=4, markevery=5)
-    plt.plot(x, gru_math_losses_tensor_pba12.numpy(), label='PBA12', linestyle='-', marker='*', markersize=4, markevery=5)
-    
-    plt.yscale('log')
-    plt.legend()
-    plt.xlabel('Iteration k')
-    plt.ylabel('$(F(x_k) - F_*) / F_*$')
-    plt.title('Ablation study on LASSO')
-    plt.grid(True, which="both", ls="--")
-    plt.show()
-    
-    print("gru_math_p={}, gru_math_pa={}, gru_math_pba={}, gru_math_pba1={}, gru_math_pba2={}, gru_math_pba12={}"
-          .format(gru_math_sum_loss_p, gru_math_sum_loss_pa, gru_math_sum_loss_pba, 
-                  gru_math_sum_loss_pba1, gru_math_sum_loss_pba2, gru_math_sum_loss_pba12))
-
-
-# In[33]:
-
-
-# Plotting
-plt.figure(figsize=(10, 6))
-plt.plot(x, gru_math_losses_tensor_p.numpy(), label='P', linestyle='-', marker='*', markersize=6, markevery=10, color='blue')
-plt.plot(x, gru_math_losses_tensor_pa.numpy(), label='PA', linestyle='--', marker='o', markersize=6, markevery=10, color='green')
-plt.plot(x, gru_math_losses_tensor_pba.numpy(), label='PBA', linestyle='-.', marker='s', markersize=6, markevery=10, color='red')
-plt.plot(x, gru_math_losses_tensor_pba1.numpy(), label='PBA1', linestyle=':', marker='^', markersize=6, markevery=10, color='purple')
-plt.plot(x, gru_math_losses_tensor_pba2.numpy(), label='PBA2', linestyle='-', marker='D', markersize=6, markevery=10, color='orange')
-plt.plot(x, gru_math_losses_tensor_pba12.numpy(), label='PBA12', linestyle='--', marker='x', markersize=6, markevery=10, color='brown')
-
-plt.yscale('log')
-plt.legend()
-plt.xlabel('Steps')
-plt.ylabel('$Log(Objective)$')
-
-# Remove top and right spines
-ax = plt.gca()
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
-
-# Remove the frame around the legend
-leg = plt.legend()
-leg.get_frame().set_linewidth(0.0)
-
-plt.tight_layout()
-plt.show()
-
-print("gru_math_p={}, gru_math_pa={}, gru_math_pba={}, gru_math_pba1={}, gru_math_pba2={}, gru_math_pba12={}"
-      .format(gru_math_sum_loss_p, gru_math_sum_loss_pa, gru_math_sum_loss_pba, 
-              gru_math_sum_loss_pba1, gru_math_sum_loss_pba2, gru_math_sum_loss_pba12))
-
-
-# ## 6.自动学习的LSTM优化器Learning to learn
-
-# In[34]:
-
-
+# ## 8.自动学习的GRU优化器Learning to learn
 from timeit import default_timer as timer
 def Learning_to_learn_global_training(optimizee, global_taining_steps, Optimizee_Train_Steps, UnRoll_STEPS, 
                                       Evaluate_period ,optimizer_lr=0.1):
@@ -1457,11 +1192,7 @@ def Learning_to_learn_global_training(optimizee, global_taining_steps, Optimizee
     return global_loss_list, best_flag
 
 
-# ## 7.GRU_Math_P
-
-# In[35]:
-
-
+# ## 9.GRU_Math_P
 def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
     print('evalute the model(评估模型)')
     STEPS = 100
@@ -1487,16 +1218,11 @@ def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
         best_flag = True
         
     return best_sum_loss, best_final_loss, best_flag
-
-
-# In[36]:
-
-
-Global_Train_Steps = 50 #可修改
+Global_Train_Steps = 50 
 Optimizee_Train_Steps = 100
 UnRoll_STEPS = 20
-Evaluate_period = 1 #可修改
-optimizer_lr = 0.1 #可修改
+Evaluate_period = 1
+optimizer_lr = 0.1 
 global_loss_list ,flag = Learning_to_learn_global_training( GRU_Math_Optimizee_P,
                                                             Global_Train_Steps,
                                                             Optimizee_Train_Steps,
@@ -1504,12 +1230,7 @@ global_loss_list ,flag = Learning_to_learn_global_training( GRU_Math_Optimizee_P
                                                             Evaluate_period,
                                                             optimizer_lr)
 
-
-# ## 9.GRU_Math_PA
-
-# In[37]:
-
-
+# ## 10.GRU_Math_PA
 def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
     print('evalute the model(评估模型)')
     STEPS = 100
@@ -1535,16 +1256,11 @@ def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
         best_flag = True
         
     return best_sum_loss, best_final_loss, best_flag
-
-
-# In[38]:
-
-
-Global_Train_Steps = 50 #可修改
+Global_Train_Steps = 50 
 Optimizee_Train_Steps = 100
 UnRoll_STEPS = 20
-Evaluate_period = 1 #可修改
-optimizer_lr = 0.1 #可修改
+Evaluate_period = 1 
+optimizer_lr = 0.1
 global_loss_list ,flag = Learning_to_learn_global_training( GRU_Math_Optimizee_PA,
                                                             Global_Train_Steps,
                                                             Optimizee_Train_Steps,
@@ -1553,11 +1269,7 @@ global_loss_list ,flag = Learning_to_learn_global_training( GRU_Math_Optimizee_P
                                                             optimizer_lr)
 
 
-# ## 10.GRU_Math_PBA
-
-# In[39]:
-
-
+# ## 11.GRU_Math_PBA
 def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
     print('evalute the model(评估模型)')
     STEPS = 100
@@ -1583,16 +1295,11 @@ def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
         best_flag = True
         
     return best_sum_loss, best_final_loss, best_flag
-
-
-# In[40]:
-
-
-Global_Train_Steps = 50 #可修改
+Global_Train_Steps = 50 
 Optimizee_Train_Steps = 100
 UnRoll_STEPS = 20
-Evaluate_period = 1 #可修改
-optimizer_lr = 0.1 #可修改
+Evaluate_period = 1 
+optimizer_lr = 0.1
 global_loss_list ,flag = Learning_to_learn_global_training( GRU_Math_Optimizee_PBA,
                                                             Global_Train_Steps,
                                                             Optimizee_Train_Steps,
@@ -1601,11 +1308,7 @@ global_loss_list ,flag = Learning_to_learn_global_training( GRU_Math_Optimizee_P
                                                             optimizer_lr)
 
 
-# ## 11.GRU_Math_PBA1
-
-# In[41]:
-
-
+# ## 12.GRU_Math_PBA1
 def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
     print('evalute the model(评估模型)')
     STEPS = 100
@@ -1631,16 +1334,11 @@ def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
         best_flag = True
         
     return best_sum_loss, best_final_loss, best_flag
-
-
-# In[42]:
-
-
-Global_Train_Steps = 50 #可修改
+Global_Train_Steps = 50 
 Optimizee_Train_Steps = 100
 UnRoll_STEPS = 20
-Evaluate_period = 1 #可修改
-optimizer_lr = 0.1 #可修改
+Evaluate_period = 1 
+optimizer_lr = 0.1 
 global_loss_list ,flag = Learning_to_learn_global_training( GRU_Math_Optimizee_PBA1,
                                                             Global_Train_Steps,
                                                             Optimizee_Train_Steps,
@@ -1649,11 +1347,7 @@ global_loss_list ,flag = Learning_to_learn_global_training( GRU_Math_Optimizee_P
                                                             optimizer_lr)
 
 
-# ## 12.GRU_Math_PBA2
-
-# In[43]:
-
-
+# ## 13.GRU_Math_PBA2
 def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
     print('evalute the model(评估模型)')
     STEPS = 100
@@ -1679,16 +1373,11 @@ def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
         best_flag = True
         
     return best_sum_loss, best_final_loss, best_flag
-
-
-# In[44]:
-
-
-Global_Train_Steps = 50 #可修改
+Global_Train_Steps = 50 
 Optimizee_Train_Steps = 100
 UnRoll_STEPS = 20
-Evaluate_period = 1 #可修改
-optimizer_lr = 0.1 #可修改
+Evaluate_period = 1 
+optimizer_lr = 0.1 
 global_loss_list ,flag = Learning_to_learn_global_training( GRU_Math_Optimizee_PBA2,
                                                             Global_Train_Steps,
                                                             Optimizee_Train_Steps,
@@ -1697,11 +1386,7 @@ global_loss_list ,flag = Learning_to_learn_global_training( GRU_Math_Optimizee_P
                                                             optimizer_lr)
 
 
-# ## 13.GRU_Math_PBA12
-
-# In[45]:
-
-
+# ## 14.GRU_Math_PBA12
 def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
     print('evalute the model(评估模型)')
     STEPS = 100
@@ -1727,185 +1412,14 @@ def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
         best_flag = True
         
     return best_sum_loss, best_final_loss, best_flag
-
-
-# In[46]:
-
-
-Global_Train_Steps = 50 #可修改
+Global_Train_Steps = 50 
 Optimizee_Train_Steps = 100
 UnRoll_STEPS = 20
-Evaluate_period = 1 #可修改
-optimizer_lr = 0.1 #可修改
+Evaluate_period = 1
+optimizer_lr = 0.1 
 global_loss_list ,flag = Learning_to_learn_global_training( GRU_Math_Optimizee_PBA12,
                                                             Global_Train_Steps,
                                                             Optimizee_Train_Steps,
                                                             UnRoll_STEPS,
                                                             Evaluate_period,
                                                             optimizer_lr)
-
-
-# ## 14.结果
-
-# In[47]:
-
-
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-
-STEPS = 100
-x = np.arange(STEPS)
-
-#for _ in range(1): 
-for loop_count in range(1):  # 在这里设置循环次数
-   
-    GRU_Math_learner_P = Learner(f , W, Y, GRU_Math_Optimizee_P, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner_PA = Learner(f , W, Y, GRU_Math_Optimizee_PA, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner_PBA = Learner(f , W, Y, GRU_Math_Optimizee_PBA, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner_PBA1 = Learner(f , W, Y, GRU_Math_Optimizee_PBA1, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner_PBA2 = Learner(f , W, Y, GRU_Math_Optimizee_PBA2, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner_PBA12 = Learner(f , W, Y, GRU_Math_Optimizee_PBA12, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    
-    gru_math_losses_p, gru_math_sum_loss_p = GRU_Math_learner_P()
-    gru_math_losses_pa, gru_math_sum_loss_pa = GRU_Math_learner_PA()
-    gru_math_losses_pba, gru_math_sum_loss_pba = GRU_Math_learner_PBA()
-    gru_math_losses_pba1, gru_math_sum_loss_pba1 = GRU_Math_learner_PBA1()
-    gru_math_losses_pba2, gru_math_sum_loss_pba2 = GRU_Math_learner_PBA2()
-    gru_math_losses_pba12, gru_math_sum_loss_pba12 = GRU_Math_learner_PBA12()
-    
-    gru_math_losses_tensor_p = torch.tensor(gru_math_losses_p)
-    gru_math_losses_tensor_pa = torch.tensor(gru_math_losses_pa)
-    gru_math_losses_tensor_pba = torch.tensor(gru_math_losses_pba)
-    gru_math_losses_tensor_pba1 = torch.tensor(gru_math_losses_pba1)
-    gru_math_losses_tensor_pba2 = torch.tensor(gru_math_losses_pba2)
-    gru_math_losses_tensor_pba12 = torch.tensor(gru_math_losses_pba12)
-    
-    plt.figure(figsize=(10, 6))
-    plt.plot(x, gru_math_losses_tensor_p.numpy(), label='P', linestyle='-', marker='o', markersize=4, markevery=5)
-    plt.plot(x, gru_math_losses_tensor_pa.numpy(), label='PA', linestyle='-', marker='v', markersize=4, markevery=5)
-    plt.plot(x, gru_math_losses_tensor_pba.numpy(), label='PBA', linestyle='-', marker='^', markersize=4, markevery=5)
-    plt.plot(x, gru_math_losses_tensor_pba1.numpy(), label='PBA1', linestyle='-', marker='<', markersize=4, markevery=5)
-    plt.plot(x, gru_math_losses_tensor_pba2.numpy(), label='PBA2', linestyle='-', marker='>', markersize=4, markevery=5)
-    plt.plot(x, gru_math_losses_tensor_pba12.numpy(), label='PBA12', linestyle='-', marker='s', markersize=4, markevery=5)
-    
-    plt.yscale('log')
-    plt.legend()
-    plt.xlabel('Iteration k')
-    plt.ylabel('Log(Object)')
-    plt.title('Ablation study on LASSO')
-    plt.grid(True, which="both", ls="--")
-    plt.show()
-    
-    print("gru_math_p={}, gru_math_pa={}, gru_math_pba={}, gru_math_pba1={}, gru_math_pba2={}, gru_math_pba12={}"
-          .format(gru_math_sum_loss_p, gru_math_sum_loss_pa, gru_math_sum_loss_pba, 
-                  gru_math_sum_loss_pba1, gru_math_sum_loss_pba2, gru_math_sum_loss_pba12))
-
-
-# In[50]:
-
-
-# Plotting
-plt.figure(figsize=(10, 6))
-plt.plot(x, gru_math_losses_tensor_p.numpy(), label='P', linestyle='-', marker='*', markersize=6, markevery=10, color='blue')
-plt.plot(x, gru_math_losses_tensor_pa.numpy(), label='PA', linestyle='--', marker='o', markersize=6, markevery=10, color='green')
-plt.plot(x, gru_math_losses_tensor_pba.numpy(), label='PBA', linestyle='-.', marker='s', markersize=6, markevery=10, color='red')
-plt.plot(x, gru_math_losses_tensor_pba1.numpy(), label='PBA1', linestyle=':', marker='^', markersize=6, markevery=10, color='purple')
-plt.plot(x, gru_math_losses_tensor_pba2.numpy(), label='PBA2', linestyle='-', marker='D', markersize=6, markevery=10, color='orange')
-plt.plot(x, gru_math_losses_tensor_pba12.numpy(), label='PBA12', linestyle='--', marker='x', markersize=6, markevery=10, color='brown')
-
-plt.yscale('log')
-plt.legend()
-plt.xlabel('Steps')
-plt.ylabel('Loss')
-plt.title('Ablation study on LASSO')
-
-# Remove top and right spines
-ax = plt.gca()
-
-
-# Remove the frame around the legend
-leg = plt.legend()
-leg.get_frame().set_linewidth(0.0)
-
-plt.tight_layout()
-plt.show()
-
-print("gru_math_p={}, gru_math_pa={}, gru_math_pba={}, gru_math_pba1={}, gru_math_pba2={}, gru_math_pba12={}"
-      .format(gru_math_sum_loss_p, gru_math_sum_loss_pa, gru_math_sum_loss_pba, 
-              gru_math_sum_loss_pba1, gru_math_sum_loss_pba2, gru_math_sum_loss_pba12))
-
-
-# In[49]:
-
-
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-import torch
-
-STEPS = 100
-x = np.arange(STEPS)
-
-# for _ in range(1): 
-for loop_count in range(1):  # 在这里设置循环次数
-   
-    GRU_Math_learner_P = Learner(f , W, Y, GRU_Math_Optimizee_P, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner_PA = Learner(f , W, Y, GRU_Math_Optimizee_PA, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner_PBA = Learner(f , W, Y, GRU_Math_Optimizee_PBA, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner_PBA1 = Learner(f , W, Y, GRU_Math_Optimizee_PBA1, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner_PBA2 = Learner(f , W, Y, GRU_Math_Optimizee_PBA2, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner_PBA12 = Learner(f , W, Y, GRU_Math_Optimizee_PBA12, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    
-    gru_math_losses_p, gru_math_sum_loss_p = GRU_Math_learner_P()
-    gru_math_losses_pa, gru_math_sum_loss_pa = GRU_Math_learner_PA()
-    gru_math_losses_pba, gru_math_sum_loss_pba = GRU_Math_learner_PBA()
-    gru_math_losses_pba1, gru_math_sum_loss_pba1 = GRU_Math_learner_PBA1()
-    gru_math_losses_pba2, gru_math_sum_loss_pba2 = GRU_Math_learner_PBA2()
-    gru_math_losses_pba12, gru_math_sum_loss_pba12 = GRU_Math_learner_PBA12()
-    
-    gru_math_losses_tensor_p = torch.tensor(gru_math_losses_p)
-    gru_math_losses_tensor_pa = torch.tensor(gru_math_losses_pa)
-    gru_math_losses_tensor_pba = torch.tensor(gru_math_losses_pba)
-    gru_math_losses_tensor_pba1 = torch.tensor(gru_math_losses_pba1)
-    gru_math_losses_tensor_pba2 = torch.tensor(gru_math_losses_pba2)
-    gru_math_losses_tensor_pba12 = torch.tensor(gru_math_losses_pba12)
-    
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(x, gru_math_losses_tensor_p.numpy(), label='P', linestyle='-', marker='*', markersize=6, markevery=10, color='blue')
-    plt.plot(x, gru_math_losses_tensor_pa.numpy(), label='PA', linestyle='--', marker='o', markersize=6, markevery=10, color='green')
-    plt.plot(x, gru_math_losses_tensor_pba.numpy(), label='PBA', linestyle='-.', marker='s', markersize=6, markevery=10, color='red')
-    plt.plot(x, gru_math_losses_tensor_pba1.numpy(), label='PBA1', linestyle=':', marker='^', markersize=6, markevery=10, color='purple')
-    plt.plot(x, gru_math_losses_tensor_pba2.numpy(), label='PBA2', linestyle='-', marker='D', markersize=6, markevery=10, color='orange')
-    plt.plot(x, gru_math_losses_tensor_pba12.numpy(), label='PBA12', linestyle='--', marker='x', markersize=6, markevery=10, color='brown')
-    plt.yscale('log')
-    plt.legend()
-    plt.xlabel('Steps')
-    plt.ylabel('Loss')
-    plt.title('Ablation study on LASSO')
-    plt.grid(True, which="major", ls="-")  # 只显示主网格线
-    plt.show()
-    
-    print("gru_math_p={}, gru_math_pa={}, gru_math_pba={}, gru_math_pba1={}, gru_math_pba2={}, gru_math_pba12={}"
-          .format(gru_math_sum_loss_p, gru_math_sum_loss_pa, gru_math_sum_loss_pba, 
-                  gru_math_sum_loss_pba1, gru_math_sum_loss_pba2, gru_math_sum_loss_pba12))
-
-
-# In[50]:
-
-
-#1000*10
-
-
-# In[ ]:
-
-
-#500*250
-
-
-# In[ ]:
-
-
-
-
