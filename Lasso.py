@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import torch
 import numpy as np
 import torch.nn as nn
@@ -11,47 +5,20 @@ from timeit import default_timer as timer
 
 import warnings
 warnings.filterwarnings("ignore")
-
-
-# In[2]:
-
-
 if torch.cuda.is_available():
     USE_CUDA = True  
-
 print('USE_CUDA = {}'.format(USE_CUDA))
-
-
-# ## 1.创建模拟数据
-
-# In[3]:
-
 
 num_samples = 1000
 num_features = 10
 batchsize = 256
-
 torch.manual_seed(42)
 W = torch.randn(batchsize, num_samples, num_features)
 x_gt = torch.randn(batchsize, num_features)
 y_gt = torch.matmul(W, x_gt.unsqueeze(-1)).squeeze()
-
-
-# In[4]:
-
-
-# 设定噪声的标准差
 noise_std = 0.1
-# 生成噪声
 noise = torch.randn_like(y_gt) * noise_std
-# 添加噪声到 Y 中
 Y = y_gt + noise
-
-
-# ## 2.定义Lasso优化问题（混合凸函数情况）
-
-# In[5]:
-
 
 def f(W, Y, x):
     """minimize (1/2) * ||Y - W @ X||_2^2  + rho * ||X||_1"""
@@ -60,21 +27,13 @@ def f(W, Y, x):
         W = W.cuda()
         Y = Y.cuda()
         x = x.cuda()    
-        
-    # 数据拟合项（残差平方和）
     data_fit_term = 0.5 * ((torch.matmul(W, x.unsqueeze(-1)).squeeze() - Y)**2).sum()    
-    # 正则化项（L1范数）
     regularization_term = rho * torch.norm(x, p=1)    
-    # 总损失
     loss = data_fit_term + regularization_term
     return loss
 
 
-# ## 1.构造LSTM_BlackBox优化器----2016
-
-# In[6]:
-
-
+# ## 1.LSTM_BlackBox----2016
 class LSTM_BlackBox_Optimizee_Model(nn.Module):   
     def __init__(self,input_size, output_size, hidden_size, num_stacks, batchsize, preprocess = True ,p = 10 ,output_scale = 1):
         super().__init__()
@@ -132,46 +91,26 @@ class LSTM_BlackBox_Optimizee_Model(nn.Module):
         #x = x + update
         x = torch.add(x, update)
         return x , next_state
-
-
-# In[7]:
-
-
 Layers = 2
 Hidden_nums = 20
 Input_DIM = num_features
 Output_DIM = num_features
 output_scale_value=1
-
-
-# In[8]:
-
-
 LSTM_BlackBox_Optimizee = LSTM_BlackBox_Optimizee_Model( Input_DIM, Output_DIM, Hidden_nums ,Layers , batchsize=batchsize,
                 preprocess=False,output_scale=output_scale_value)   ###### preprocess=False
 
 print(LSTM_BlackBox_Optimizee)
-
 if USE_CUDA:
     LSTM_BlackBox_Optimizee = LSTM_BlackBox_Optimizee.cuda()
 
 
-# ## 2.构造Lr_LSTM_BlackBox优化器
-
-# In[9]:
-
-
+# ## 2.Lr_LSTM_BlackBox
 NORM_FUNC = {
     'exp': torch.exp,
     'eye': nn.Identity(),
     'sigmoid': lambda x: 2.0 * torch.sigmoid(x),
     'softplus': nn.Softplus(),
 }
-
-
-# In[10]:
-
-
 class LSTM_BlackBox_Optimizee_Model_lr(nn.Module):   
     def __init__(self,input_size, output_size, hidden_size, num_stacks, batchsize, preprocess = True ,p = 10 ,output_scale = 1):
         super().__init__()
@@ -233,46 +172,25 @@ class LSTM_BlackBox_Optimizee_Model_lr(nn.Module):
         #x = x + update
         x = torch.add(x, update)
         return x , next_state
-
-
-# In[11]:
-
-
 Layers = 2
 Hidden_nums = 20
 Input_DIM = num_features
 Output_DIM = num_features
 output_scale_value=1
-
-
-# In[12]:
-
-
 LSTM_BlackBox_Optimizee_lr = LSTM_BlackBox_Optimizee_Model_lr( Input_DIM, Output_DIM, Hidden_nums ,Layers , batchsize=batchsize,
                 preprocess=False,output_scale=output_scale_value)   ###### preprocess=False
-
 print(LSTM_BlackBox_Optimizee_lr)
-
 if USE_CUDA:
     LSTM_BlackBox_Optimizee_lr = LSTM_BlackBox_Optimizee_lr.cuda()
 
 
-# ## 3.构造LSTM_Math优化器---2023
-
-# In[13]:
-
-
+# ## 3.LSTM_Math---2023
 NORM_FUNC = {
     'exp': torch.exp,
     'eye': nn.Identity(),
     'sigmoid': lambda x: 2.0 * torch.sigmoid(x),
     'softplus': nn.Softplus(),
 }
-
-
-# In[14]:
-
-
 class LSTM_Math_Optimizee_Model(nn.Module):
     def __init__(self, input_size, output_size, hidden_size, num_stacks,
                  batchsize, preprocess = True ,p = 10 ,output_scale = 1,
@@ -421,46 +339,25 @@ class LSTM_Math_Optimizee_Model(nn.Module):
         #x = torch.add(x, update)
         x = update
         return x , next_state
-
-
-# In[15]:
-
-
 Layers = 2
 Hidden_nums = 20
 Input_DIM = num_features
 Output_DIM = num_features
 output_scale_value=1
-
-
-# In[16]:
-
-
 LSTM_Math_Optimizee = LSTM_Math_Optimizee_Model( Input_DIM, Output_DIM, Hidden_nums ,Layers , batchsize=batchsize,
                 preprocess=False,output_scale=output_scale_value)   ###### preprocess=False
-
 print(LSTM_Math_Optimizee)
-
 if USE_CUDA:
     LSTM_Math_Optimizee = LSTM_Math_Optimizee.cuda()
 
 
-# ## 3.构造GRU_Math优化器
-
-# In[17]:
-
-
+# ## 4.构造GRU_Math优化器
 NORM_FUNC = {
     'exp': torch.exp,
     'eye': nn.Identity(),
     'sigmoid': lambda x: 2.0 * torch.sigmoid(x),
     'softplus': nn.Softplus(),
 }
-
-
-# In[18]:
-
-
 class GRU_Math_Optimizee_Model(nn.Module):
     def __init__(self, input_size, output_size, hidden_size, num_stacks,
                  batchsize, preprocess = True ,p = 10 ,output_scale = 1,
@@ -613,35 +510,19 @@ class GRU_Math_Optimizee_Model(nn.Module):
         #x = torch.add(x, update)
         x = update
         return x , next_state
-
-
-# In[19]:
-
-
 Layers = 2
 Hidden_nums = 20
 Input_DIM = num_features
 Output_DIM = num_features
 output_scale_value=1
-
-
-# In[20]:
-
-
 GRU_Math_Optimizee = GRU_Math_Optimizee_Model(Input_DIM, Output_DIM, Hidden_nums ,Layers , batchsize=batchsize,
                 preprocess=False,output_scale=output_scale_value)   ###### preprocess=False
-
 print(GRU_Math_Optimizee)
-
 if USE_CUDA:
     GRU_Math_Optimizee = GRU_Math_Optimizee.cuda()
 
 
-# ## 7.优化问题目标函数的学习过程
-
-# In[21]:
-
-
+# ## 5.优化问题目标函数的学习过程
 class Learner( object ):
     def __init__(self,    
                  f ,  
@@ -783,53 +664,7 @@ class Learner( object ):
             return self.losses ,self.global_loss_graph 
 
 
-# In[22]:
-
-
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-
-STEPS = 100
-x = np.arange(STEPS)
-
-#for _ in range(1): 
-for loop_count in range(1):  # 在这里设置循环次数
-   
-    LSTM_BlackBox_learner = Learner(f , W, Y, LSTM_BlackBox_Optimizee, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    LSTM_BlackBox_lr_learner = Learner(f , W, Y, LSTM_BlackBox_Optimizee_lr, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    LSTM_Math_learner = Learner(f , W, Y, LSTM_Math_Optimizee, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner = Learner(f , W, Y, GRU_Math_Optimizee, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    
-    lstm_blackbox_losses, lstm_blackbox_sum_loss = LSTM_BlackBox_learner()
-    lstm_blackbox_lr_losses, lstm_blackbox_lr_sum_loss = LSTM_BlackBox_lr_learner()
-    lstm_math_losses, lstm_math_sum_loss = LSTM_Math_learner()
-    gru_math_losses, gru_math_sum_loss = GRU_Math_learner()
-
-    lstm_blackbox_losses_tensor = torch.tensor(lstm_blackbox_losses)
-    lstm_blackbox_lr_losses_tensor = torch.tensor(lstm_blackbox_lr_losses)
-    lstm_math_losses_tensor = torch.tensor(lstm_math_losses)
-    gru_math_losses_tensor = torch.tensor(gru_math_losses)
-    
-    p1, = plt.plot(x, lstm_blackbox_losses_tensor.numpy(), label='LSTM_BlackBox')
-    p2, = plt.plot(x, lstm_blackbox_lr_losses_tensor.numpy(), label='LSTM_BlackBox_Lr')
-    p3, = plt.plot(x, lstm_math_losses_tensor.numpy(), label='LSTM_Math')
-    p4, = plt.plot(x, gru_math_losses_tensor.numpy(), label='GRU_Math') 
-
-    
-    plt.yscale('log')
-    plt.legend(handles=[p1, p2, p3, p4])
-    plt.title('Losses')
-    plt.show()
-    print("lstm_black={},lstm_black_lr={},lstm_math={}, gru_math={}".format(lstm_blackbox_sum_loss,lstm_blackbox_lr_sum_loss, lstm_math_sum_loss, 
-                                                                                            gru_math_sum_loss  ))
-
-
-# ## 9.自动学习的LSTM优化器Learning to learn
-
-# In[23]:
-
-
+# ## 6.自动学习的GRU优化器Learning to learn
 from timeit import default_timer as timer
 def Learning_to_learn_global_training(optimizee, global_taining_steps, Optimizee_Train_Steps, UnRoll_STEPS, 
                                       Evaluate_period ,optimizer_lr=0.1):
@@ -870,11 +705,7 @@ def Learning_to_learn_global_training(optimizee, global_taining_steps, Optimizee
     return global_loss_list, best_flag
 
 
-# ## 2.构造LSTM_BlackBox优化器----2016
-
-# In[24]:
-
-
+# ## 7.LSTM_BlackBox----2016
 def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
     print('evalute the model(评估模型)')
     STEPS = 100
@@ -900,16 +731,11 @@ def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
         best_flag = True
         
     return best_sum_loss, best_final_loss, best_flag
-
-
-# In[25]:
-
-
-Global_Train_Steps = 100 #可修改1000
-Optimizee_Train_Steps = 100#######100
+Global_Train_Steps = 100 
+Optimizee_Train_Steps = 100
 UnRoll_STEPS = 20
-Evaluate_period = 1 #可修改
-optimizer_lr = 0.1 #可修改
+Evaluate_period = 1
+optimizer_lr = 0.1
 global_loss_list ,flag = Learning_to_learn_global_training( LSTM_BlackBox_Optimizee,
                                                             Global_Train_Steps,
                                                             Optimizee_Train_Steps,
@@ -918,11 +744,7 @@ global_loss_list ,flag = Learning_to_learn_global_training( LSTM_BlackBox_Optimi
                                                             optimizer_lr)
 
 
-# ## 2.构造Lr_LSTM_BlackBox优化器
-
-# In[26]:
-
-
+# ## 8.Lr_LSTM_BlackBox
 def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
     print('evalute the model(评估模型)')
     STEPS = 100
@@ -948,16 +770,11 @@ def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
         best_flag = True
         
     return best_sum_loss, best_final_loss, best_flag
-
-
-# In[27]:
-
-
-Global_Train_Steps = 100 #可修改1000
-Optimizee_Train_Steps = 100#######100
+Global_Train_Steps = 100 
+Optimizee_Train_Steps = 100
 UnRoll_STEPS = 20
-Evaluate_period = 1 #可修改
-optimizer_lr = 0.1 #可修改
+Evaluate_period = 1 
+optimizer_lr = 0.1
 global_loss_list ,flag = Learning_to_learn_global_training( LSTM_BlackBox_Optimizee_lr,
                                                             Global_Train_Steps,
                                                             Optimizee_Train_Steps,
@@ -966,11 +783,7 @@ global_loss_list ,flag = Learning_to_learn_global_training( LSTM_BlackBox_Optimi
                                                             optimizer_lr)
 
 
-# ## 11.LSTM_Math
-
-# In[28]:
-
-
+# ## 9.LSTM_Math
 def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
     print('evalute the model(评估模型)')
     STEPS = 100
@@ -996,16 +809,11 @@ def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
         best_flag = True
         
     return best_sum_loss, best_final_loss, best_flag
-
-
-# In[29]:
-
-
-Global_Train_Steps = 100 #可修改1000
-Optimizee_Train_Steps = 100#######100
+Global_Train_Steps = 100 
+Optimizee_Train_Steps = 100
 UnRoll_STEPS = 20
-Evaluate_period = 1 #可修改
-optimizer_lr = 0.1 #可修改
+Evaluate_period = 1 
+optimizer_lr = 0.1
 global_loss_list ,flag = Learning_to_learn_global_training( LSTM_Math_Optimizee,
                                                             Global_Train_Steps,
                                                             Optimizee_Train_Steps,
@@ -1014,11 +822,7 @@ global_loss_list ,flag = Learning_to_learn_global_training( LSTM_Math_Optimizee,
                                                             optimizer_lr)
 
 
-# ## 12.GRU_Math
-
-# In[30]:
-
-
+# ## 10.GRU_Math
 def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
     print('evalute the model(评估模型)')
     STEPS = 100
@@ -1044,308 +848,14 @@ def evaluate(best_sum_loss, best_final_loss, best_flag, lr):
         best_flag = True
         
     return best_sum_loss, best_final_loss, best_flag
-
-
-# In[31]:
-
-
-Global_Train_Steps = 100 #可修改1000
-Optimizee_Train_Steps = 100#######100
+Global_Train_Steps = 100 
+Optimizee_Train_Steps = 100
 UnRoll_STEPS = 20
-Evaluate_period = 1 #可修改
-optimizer_lr = 0.1 #可修改
+Evaluate_period = 1 
+optimizer_lr = 0.1
 global_loss_list ,flag = Learning_to_learn_global_training( GRU_Math_Optimizee,
                                                             Global_Train_Steps,
                                                             Optimizee_Train_Steps,
                                                             UnRoll_STEPS,
                                                             Evaluate_period,
                                                             optimizer_lr)
-
-
-# In[32]:
-
-
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-
-STEPS = 100
-x = np.arange(STEPS)
-
-Adam = 'Adam' #因为这里Adam使用Pytorch
-SGD = 'SGD'
-RMS = 'RMS'
-
-#for _ in range(1): 
-for loop_count in range(1):  # 在这里设置循环次数
-   
-    LSTM_BlackBox_learner = Learner(f , W, Y, LSTM_BlackBox_Optimizee, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    LSTM_BlackBox_lr_learner = Learner(f , W, Y, LSTM_BlackBox_Optimizee_lr, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    LSTM_Math_learner = Learner(f , W, Y, LSTM_Math_Optimizee, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner = Learner(f , W, Y, GRU_Math_Optimizee, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
- 
-    lstm_blackbox_losses, lstm_blackbox_sum_loss = LSTM_BlackBox_learner()
-    lstm_blackbox_lr_losses, lstm_blackbox_lr_sum_loss = LSTM_BlackBox_lr_learner()
-    lstm_math_losses, lstm_math_sum_loss = LSTM_Math_learner()
-    gru_math_losses, gru_math_sum_loss = GRU_Math_learner()
-    
-    llstm_blackbox_losses_tensor = torch.tensor(lstm_blackbox_losses)
-    lstm_blackbox_lr_losses_tensor = torch.tensor(lstm_blackbox_lr_losses)
-    lstm_math_losses_tensor = torch.tensor(lstm_math_losses)
-    gru_math_losses_tensor = torch.tensor(gru_math_losses)
-    
-    p1, = plt.plot(x, lstm_blackbox_losses_tensor.numpy(), label='LSTM_BlackBox')
-    p2, = plt.plot(x, lstm_blackbox_lr_losses_tensor.numpy(), label='LSTM_BlackBox_Lr')
-    p3, = plt.plot(x, lstm_math_losses_tensor.numpy(), label='LSTM_Math') 
-    p4, = plt.plot(x, gru_math_losses_tensor.numpy(), label='GRU_Math') 
-    
-    
-    plt.yscale('log')
-    plt.legend(handles=[p1, p2, p3, p4])
-    plt.title('Losses')
-    plt.show()
-    print("lstm_black={},lstm_black_lr={},lstm_math={}, gru_math={}".format(lstm_blackbox_sum_loss,lstm_blackbox_lr_sum_loss, 
-                                                                            lstm_math_sum_loss, gru_math_sum_loss ))
-
-
-# In[35]:
-
-
-import matplotlib.pyplot as plt
-import numpy as np
-import torch
-
-# 定义颜色列表
-colors = ['blue', 'green', 'red', 'purple', 'orange', 'brown']
-
-# 定义线条样式列表
-linestyles = ['-', '--', '-.', ':', '-', '--']
-
-# 定义标记样式列表
-markers = ['*', 'o', 's', '^', 'D', 'x']
-
-# Monte Carlo实验函数
-def monte_carlo_experiment(num_experiments, num_samples, num_features, batchsize, num_steps, optimizee):
-    all_losses = []
-    
-    for _ in range(num_experiments):
-        # 生成随机数据
-        W = torch.randn(batchsize, num_samples, num_features)
-        x_gt = torch.randn(batchsize, num_features)
-        y_gt = torch.matmul(W, x_gt.unsqueeze(-1)).squeeze()
-        noise_std = 0.5
-        noise = torch.randn_like(y_gt) * noise_std
-        Y = y_gt + noise
-    
-        if optimizee == LSTM_BlackBox_Optimizee:
-            learner = Learner(f, W, Y, optimizee, num_steps, eval_flag=True, reset_theta=True, retain_graph_flag=True)
-            
-        elif optimizee == LSTM_BlackBox_Optimizee_lr:
-            learner = Learner(f, W, Y, optimizee, num_steps, eval_flag=True, reset_theta=True, retain_graph_flag=True)
-        
-        elif optimizee == LSTM_Math_Optimizee:
-            learner = Learner(f, W, Y, optimizee, num_steps, eval_flag=True, reset_theta=True, retain_graph_flag=True)
-            
-        elif optimizee == GRU_Math_Optimizee:
-            learner = Learner(f, W, Y, optimizee, num_steps, eval_flag=True, reset_theta=True, retain_graph_flag=True)
-            
-        losses, _ = learner()
-        losses_tensor = torch.tensor(losses)
-        all_losses.append(losses_tensor)        
-    
-    # 计算所有实验的平均损失、标准差和95%置信区间
-    all_losses_array = np.array(all_losses)
-    avg_losses = np.mean(all_losses_array, axis=0)
-    std_losses = np.std(all_losses_array, axis=0)
-    sem_losses = std_losses / np.sqrt(num_experiments)  # 标准误差
-    conf_interval = 1.96 * sem_losses  # 95%置信区间
-    return avg_losses, conf_interval
-
-# 设置参数
-num_experiments = 10  # 蒙特卡洛实验次数
-num_samples = 1000
-num_features = 10
-batchsize = 256
-num_steps = 100
-
-# 进行蒙特卡洛实验
-avg_losses_lstm_blackbox, conf_interval_lstm_blackbox = monte_carlo_experiment(num_experiments, num_samples, num_features, batchsize, num_steps, LSTM_BlackBox_Optimizee)
-avg_losses_lstm_blackbox_lr, conf_interval_lstm_blackbox_lr = monte_carlo_experiment(num_experiments, num_samples, num_features, batchsize, num_steps, LSTM_BlackBox_Optimizee_lr)
-avg_losses_lstm_math, conf_interval_lstm_math = monte_carlo_experiment(num_experiments, num_samples, num_features, batchsize, num_steps, LSTM_Math_Optimizee)
-avg_losses_gru_math_lr, conf_interval_gru_math_lr = monte_carlo_experiment(num_experiments, num_samples, num_features, batchsize, num_steps, GRU_Math_Optimizee)
-
-# 绘制结果
-x = np.arange(num_steps)
-
-plt.figure(figsize=(10, 6))
-for i, (avg_losses, conf_interval, label) in enumerate([
-    (avg_losses_lstm_blackbox, conf_interval_lstm_blackbox, 'LSTM-DM'),
-    (avg_losses_lstm_blackbox_lr, conf_interval_lstm_blackbox_lr, 'LSTM-LR'),
-    (avg_losses_lstm_math, conf_interval_lstm_math, 'LSTM-Math'),
-    (avg_losses_gru_math_lr, conf_interval_gru_math_lr, 'GRU-Math-LR')
-]):
-    plt.plot(x, avg_losses, label=label, linestyle=linestyles[i % len(linestyles)], 
-             marker=markers[i % len(markers)], markersize=6, color=colors[i % len(colors)], 
-             markeredgewidth=0, markevery=10)  # 去掉标记边框并减少标记密度
-    plt.fill_between(x, avg_losses - conf_interval, avg_losses + conf_interval, color=colors[i % len(colors)], alpha=0.2)
-
-plt.yscale('log')
-plt.title('QuadraticFunction-Tesing Loss with Monte Carlo')
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
-# 添加图例并将其放在右上角
-plt.legend(loc='upper right')
-plt.show()
-
-
-# In[36]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-import torch
-
-# 定义颜色列表
-colors = ['blue', 'green', 'red', 'purple', 'orange', 'brown']
-
-# 定义线条样式列表
-linestyles = ['-', '--', '-.', ':', '-', '--']
-
-# 定义标记样式列表
-markers = ['*', 'o', 's', '^', 'D', 'x']
-
-STEPS = 100
-x = np.arange(STEPS)
-
-
-# 在这里设置循环次数
-for loop_count in range(1):  
-    LSTM_BlackBox_learner = Learner(f, W, Y, LSTM_BlackBox_Optimizee, STEPS, eval_flag=True, reset_theta=True, retain_graph_flag=True)
-    LSTM_BlackBox_lr_learner = Learner(f, W, Y, LSTM_BlackBox_Optimizee_lr, STEPS, eval_flag=True, reset_theta=True, retain_graph_flag=True)
-    LSTM_Math_learner = Learner(f , W, Y, LSTM_Math_Optimizee, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    GRU_Math_learner = Learner(f , W, Y, GRU_Math_Optimizee, STEPS, eval_flag=True,reset_theta=True,retain_graph_flag=True)
-    
-    
-    lstm_blackbox_losses, lstm_blackbox_sum_loss = LSTM_BlackBox_learner()
-    lstm_blackbox_lr_losses, lstm_blackbox_lr_sum_loss = LSTM_BlackBox_lr_learner()
-    lstm_math_losses, lstm_math_sum_loss = LSTM_Math_learner()
-    gru_math_losses, gru_math_sum_loss = GRU_Math_learner()
-    
-
-    lstm_blackbox_losses_tensor = torch.tensor(lstm_blackbox_losses)
-    lstm_blackbox_lr_losses_tensor = torch.tensor(lstm_blackbox_lr_losses)
-    lstm_math_losses_tensor = torch.tensor(lstm_math_losses)
-    gru_math_losses_tensor = torch.tensor(gru_math_losses)
-    
-    plt.figure(figsize=(12, 5))
-
-    # 绘制损失曲线
-    plt.subplot(1, 2, 1)
-   
-    plt.plot(x, lstm_blackbox_losses_tensor.numpy(), label='LSTM-DM', linestyle=linestyles[0], marker=markers[0], markersize=6, color=colors[0], markeredgewidth=0, markevery=10)
-    plt.plot(x, lstm_blackbox_lr_losses_tensor.numpy(), label='LSTM-LR', linestyle=linestyles[1], marker=markers[1], markersize=6, color=colors[1], markeredgewidth=0, markevery=10)
-    plt.plot(x, lstm_math_losses_tensor.numpy(), label='LSTM-Math', linestyle=linestyles[2], marker=markers[2], markersize=6, color=colors[2], markeredgewidth=0, markevery=10)
-    plt.plot(x, gru_math_losses_tensor.numpy(), label='GRU-PA', linestyle=linestyles[3], marker=markers[3], markersize=6, color=colors[3], markeredgewidth=0, markevery=10)
-    
-    plt.yscale('log')
-    plt.title('Lasso Training Loss')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.grid(True)  # 添加网格线
-    # 添加图例并将其放在右上角
-    plt.legend(loc='upper right')
-
-
-    def monte_carlo_experiment(num_experiments, num_samples, num_features, batchsize, num_steps, optimizee):
-        all_losses = []
-    
-        for _ in range(num_experiments):
-            # 生成随机数据
-            W = torch.randn(batchsize, num_samples, num_features)
-            x_gt = torch.randn(batchsize, num_features)
-            y_gt = torch.matmul(W, x_gt.unsqueeze(-1)).squeeze()
-            noise_std = 0.5
-            noise = torch.randn_like(y_gt) * noise_std
-            Y = y_gt + noise
-    
-            if optimizee == LSTM_BlackBox_Optimizee:
-                learner = Learner(f, W, Y, optimizee, num_steps, eval_flag=True, reset_theta=True, retain_graph_flag=True)
-            
-            elif optimizee == LSTM_BlackBox_Optimizee_lr:
-                learner = Learner(f, W, Y, optimizee, num_steps, eval_flag=True, reset_theta=True, retain_graph_flag=True)
-        
-            elif optimizee == LSTM_Math_Optimizee:
-                learner = Learner(f, W, Y, optimizee, num_steps, eval_flag=True, reset_theta=True, retain_graph_flag=True)
-            
-            elif optimizee == GRU_Math_Optimizee:
-                learner = Learner(f, W, Y, optimizee, num_steps, eval_flag=True, reset_theta=True, retain_graph_flag=True)
-            
-            losses, _ = learner()
-            losses_tensor = torch.tensor(losses)
-            all_losses.append(losses_tensor)        
-    
-        # 计算所有实验的平均损失、标准差和95%置信区间
-        all_losses_array = np.array(all_losses)
-        avg_losses = np.mean(all_losses_array, axis=0)
-        std_losses = np.std(all_losses_array, axis=0)
-        sem_losses = std_losses / np.sqrt(num_experiments)  # 标准误差
-        conf_interval = 1.96 * sem_losses  # 95%置信区间
-        return avg_losses, conf_interval
-
-    # 设置参数
-    num_experiments = 10  # 蒙特卡洛实验次数
-    num_samples = 1000
-    num_features = 10
-    batchsize = 256
-    num_steps = 100
-
-
-    # 进行蒙特卡洛实验
-    avg_losses_lstm_blackbox, conf_interval_lstm_blackbox = monte_carlo_experiment(num_experiments, num_samples, num_features, batchsize, num_steps, LSTM_BlackBox_Optimizee)
-    avg_losses_lstm_blackbox_lr, conf_interval_lstm_blackbox_lr = monte_carlo_experiment(num_experiments, num_samples, num_features, batchsize, num_steps, LSTM_BlackBox_Optimizee_lr)
-    avg_losses_lstm_math, conf_interval_lstm_math = monte_carlo_experiment(num_experiments, num_samples, num_features, batchsize, num_steps, LSTM_Math_Optimizee)
-    avg_losses_gru_math_lr, conf_interval_gru_math_lr = monte_carlo_experiment(num_experiments, num_samples, num_features, batchsize, num_steps, GRU_Math_Optimizee)
-
-    # 绘制结果
-    x = np.arange(num_steps)
-
-    plt.subplot(1, 2, 2)
-    for i, (avg_losses, conf_interval, label) in enumerate([
-        (avg_losses_lstm_blackbox, conf_interval_lstm_blackbox, 'LSTM-DM'),
-        (avg_losses_lstm_blackbox_lr, conf_interval_lstm_blackbox_lr, 'LSTM-LR'),
-        (avg_losses_lstm_math, conf_interval_lstm_math, 'LSTM-Math'),
-        (avg_losses_gru_math_lr, conf_interval_gru_math_lr, 'GRU-PA')
-    ]):
-        plt.plot(x, avg_losses, label=label, linestyle=linestyles[i % len(linestyles)], 
-                 marker=markers[i % len(markers)], markersize=6, color=colors[i % len(colors)], 
-                 markeredgewidth=0, markevery=10)  # 去掉标记边框并减少标记密度
-        plt.fill_between(x, avg_losses - conf_interval, avg_losses + conf_interval, color=colors[i % len(colors)], alpha=0.2)
-
-    plt.yscale('log')
-    plt.title('Lasso Tesing Loss with Monte Carlo')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    # 添加图例并将其放在右上角
-    plt.legend(loc='upper right')
-    plt.grid(True)  # 添加网格线
-    plt.tight_layout()
-    plt.show()
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
