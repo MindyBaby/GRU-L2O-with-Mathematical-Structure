@@ -7,4 +7,4 @@ Structural variations: L2O is flexible, but differences in structure among vario
 ### 2. Contributions：
 GRU: Innovatively utilizing the lighter and more efficient GRU neural network as the core component of the L2O model.
 
-Mathematics-inspired update rule structure:Further enhancing the mathematics-inspired update rule structure aims to improve the performance of the L2O model in convex function optimization.
+Mathematics-inspired update rule structure: Further enhancing the mathematics-inspired update rule structure aims to improve the performance of the L2O model in convex function optimization.
