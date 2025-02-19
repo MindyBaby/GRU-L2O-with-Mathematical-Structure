@@ -1,5 +1,6 @@
 # GRU-L2O-with-Mathematical-Structure
 We publish simulation data as experiments to facilitate reproducible research and fair benchmarking in the L2O domain.
+Paper：Learning to optimize based on rate decay, The Computer Journal, https://doi.org/10.1093/comjnl/bxaf012
 ### 1. Some limitations of L2O
 Generalization ability: The trained optimization strategy may overfit specific problems, leading to poor performance on new tasks. 
 
